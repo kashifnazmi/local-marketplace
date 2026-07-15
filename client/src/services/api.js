@@ -8,15 +8,42 @@ const api = axios.create({
 
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("token");
+    try {
+      const storedUser = localStorage.getItem("user");
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+
+        if (user?.token) {
+          config.headers.Authorization = `Bearer ${user.token}`;
+        }
+      }
+    } catch (error) {
+      console.error("Unable to read login token:", error);
+      localStorage.removeItem("user");
     }
 
     return config;
   },
   (error) => Promise.reject(error)
+);
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      const message = error.response?.data?.message;
+
+      if (
+        message === "Not authorized, no token" ||
+        message === "Not authorized, token failed"
+      ) {
+        localStorage.removeItem("user");
+      }
+    }
+
+    return Promise.reject(error);
+  }
 );
 
 export default api;
